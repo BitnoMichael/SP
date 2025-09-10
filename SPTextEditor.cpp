@@ -3,13 +3,24 @@
 
 #include "framework.h"
 #include "SPTextEditor.h"
+#include "InactionSprite.h"
+#include <stdexcept>
 
 #define MAX_LOADSTRING 100
+#define BTN_OPEN_ID 1001
+#define BTN_SAVE_ID 1002
+#define BTN_CLOSE_ID 1003
+#define BTN_CUT_ID 2001
+#define BTN_COPY_ID 2002
+#define BTN_PASTE_ID 2003
+#define BTN_ABOUT_ID 3001
 
 // Глобальные переменные:
 HINSTANCE hInst;                                // текущий экземпляр
 WCHAR szTitle[MAX_LOADSTRING];                  // Текст строки заголовка
 WCHAR szWindowClass[MAX_LOADSTRING];            // имя класса главного окна
+
+static InactionSprite* inactionSprite = NULL;
 
 // Отправить объявления функций, включенных в этот модуль кода:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -72,7 +83,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hInstance      = hInstance;
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SPTEXTEDITOR));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(0);
+    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW + 1);
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_SPTEXTEDITOR);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -108,27 +119,54 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    if (inactionSprite == NULL)
+        inactionSprite = new InactionSprite(hInst, hWnd);
+
     switch (message)
     {
+    case WM_MOUSEMOVE:
+    case WM_LBUTTONDOWN:
+    case WM_RBUTTONDOWN:
+    case WM_KEYDOWN:
+    {
+        inactionSprite->SetTimerInactionValue(0);
+        inactionSprite->StopAnimation();
+        break;
+    }
+    case WM_SIZE:
+    {
+        inactionSprite->ValidateScreenInfo();
+        break;
+    }
+    case WM_TIMER:
+    {
+        if (inactionSprite->GetIsVisible())
+            inactionSprite->ShowNextFrame();
+        else if (inactionSprite->IncTimerInactionValue() >= 5)
+            inactionSprite->StartAnimation();
+
+        break;
+    }
     case WM_CREATE:
     {
         // создаём главное меню
+        SetTimer(hWnd, inactionSprite->GetIdTimerInaction(), 1000, NULL);
         HMENU hMainMenu = CreateMenu();
 
         HMENU hFileMenu = CreateMenu();
-        AppendMenu(hFileMenu, MF_STRING, 1001, L"Открыть");
-        AppendMenu(hFileMenu, MF_STRING, 1002, L"Сохранить");
-        AppendMenu(hFileMenu, MF_STRING, 1003, L"Выход");
+        AppendMenu(hFileMenu, MF_STRING, BTN_OPEN_ID, L"Открыть");
+        AppendMenu(hFileMenu, MF_STRING, BTN_SAVE_ID, L"Сохранить");
+        AppendMenu(hFileMenu, MF_STRING, BTN_CLOSE_ID, L"Выход");
 
         HMENU hEditMenu = CreateMenu();
-        AppendMenu(hEditMenu, MF_STRING, 2001, L"Вырезать");
-        AppendMenu(hEditMenu, MF_STRING, 2002, L"Копировать");
-        AppendMenu(hEditMenu, MF_STRING, 2003, L"Вставить");
+        AppendMenu(hEditMenu, MF_STRING, BTN_CUT_ID, L"Вырезать");
+        AppendMenu(hEditMenu, MF_STRING, BTN_COPY_ID, L"Копировать");
+        AppendMenu(hEditMenu, MF_STRING, BTN_PASTE_ID, L"Вставить");
 
         // добавляем подменю в главное меню
         AppendMenu(hMainMenu, MF_POPUP, (UINT_PTR)hFileMenu, L"&Файл");
         AppendMenu(hMainMenu, MF_POPUP, (UINT_PTR)hEditMenu, L"&Правка");
-        AppendMenu(hMainMenu, MF_STRING, 3001, L"О программе");
+        AppendMenu(hMainMenu, MF_STRING, BTN_ABOUT_ID, L"О программе");
 
         // прикрепляем меню к окну
         SetMenu(hWnd, hMainMenu);
@@ -140,14 +178,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // Разобрать выбор в меню:
             switch (wmId)
             {
-            case 102:
+            case BTN_ABOUT_ID:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:  
-                DestroyWindow(hWnd);
                 break;
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
@@ -158,13 +190,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Добавьте сюда любой код прорисовки, использующий HDC...
             EndPaint(hWnd, &ps);
         }
         break;
     case WM_DESTROY:
+    {
+        if (inactionSprite)
+            KillTimer(hWnd, inactionSprite->GetIdTimerInaction());
         PostQuitMessage(0);
         break;
+    }
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }

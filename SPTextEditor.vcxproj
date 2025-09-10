@@ -128,11 +128,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="InactionSprite.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SPTextEditor.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="InactionSprite.cpp" />
     <ClCompile Include="SPTextEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
