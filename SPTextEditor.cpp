@@ -24,16 +24,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
-
-    // TODO: Разместите код здесь.
-
     // Инициализация глобальных строк
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_SPTEXTEDITOR, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
     // Выполнить инициализацию приложения:
-    if (!InitInstance (hInstance, nCmdShow))
+    if (!InitInstance(hInstance, nCmdShow))
     {
         return FALSE;
     }
@@ -75,7 +72,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hInstance      = hInstance;
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SPTEXTEDITOR));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
+    wcex.hbrBackground  = (HBRUSH)(0);
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_SPTEXTEDITOR);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -83,22 +80,20 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
-//
-//   ФУНКЦИЯ: InitInstance(HINSTANCE, int)
-//
+
 //   ЦЕЛЬ: Сохраняет маркер экземпляра и создает главное окно
-//
-//   КОММЕНТАРИИ:
-//
-//        В этой функции маркер экземпляра сохраняется в глобальной переменной, а также
-//        создается и выводится главное окно программы.
-//
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Сохранить маркер экземпляра в глобальной переменной
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+   HWND hWnd = CreateWindowEx(
+       0,  
+       szWindowClass,          // класс окна
+       szTitle,        // заголовок
+       WS_OVERLAPPEDWINDOW, // обычный стиль окна
+       CW_USEDEFAULT, CW_USEDEFAULT, 500, 400, // координаты и размеры
+       NULL, NULL, hInstance, NULL
+   );
 
    if (!hWnd)
    {
@@ -111,30 +106,47 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
-//
-//  ФУНКЦИЯ: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  ЦЕЛЬ: Обрабатывает сообщения в главном окне.
-//
-//  WM_COMMAND  - обработать меню приложения
-//  WM_PAINT    - Отрисовка главного окна
-//  WM_DESTROY  - отправить сообщение о выходе и вернуться
-//
-//
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
+    case WM_CREATE:
+    {
+        // создаём главное меню
+        HMENU hMainMenu = CreateMenu();
+
+        HMENU hFileMenu = CreateMenu();
+        AppendMenu(hFileMenu, MF_STRING, 1001, L"Открыть");
+        AppendMenu(hFileMenu, MF_STRING, 1002, L"Сохранить");
+        AppendMenu(hFileMenu, MF_STRING, 1003, L"Выход");
+
+        HMENU hEditMenu = CreateMenu();
+        AppendMenu(hEditMenu, MF_STRING, 2001, L"Вырезать");
+        AppendMenu(hEditMenu, MF_STRING, 2002, L"Копировать");
+        AppendMenu(hEditMenu, MF_STRING, 2003, L"Вставить");
+
+        // добавляем подменю в главное меню
+        AppendMenu(hMainMenu, MF_POPUP, (UINT_PTR)hFileMenu, L"&Файл");
+        AppendMenu(hMainMenu, MF_POPUP, (UINT_PTR)hEditMenu, L"&Правка");
+        AppendMenu(hMainMenu, MF_STRING, 3001, L"О программе");
+
+        // прикрепляем меню к окну
+        SetMenu(hWnd, hMainMenu);
+        break;
+    }
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
             // Разобрать выбор в меню:
             switch (wmId)
             {
+            case 102:
+                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+                break;
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
-            case IDM_EXIT:
+            case IDM_EXIT:  
                 DestroyWindow(hWnd);
                 break;
             default:
